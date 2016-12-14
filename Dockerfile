@@ -7,13 +7,33 @@
 FROM debian:jessie
 MAINTAINER Puckel_
 
+RUN mkdir -p /opt/oracle/instantclient_12_1 \
+   && mkdir -p /usr/local/airflow \
+   && ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime \
+   && apt-get update && apt-get install -y apt-utils build-essential unzip python-dev libaio-dev
+   
+ADD oracle/instantclient-basic-linux.x64-12.1.0.2.0.zip /opt/oracle/
+ADD oracle/instantclient-sdk-linux.x64-12.1.0.2.0.zip /opt/oracle/
+
+RUN cd /opt/oracle && unzip instantclient-basic-linux.x64-12.1.0.2.0.zip \
+   && unzip instantclient-sdk-linux.x64-12.1.0.2.0.zip \
+   && cd /opt/oracle/instantclient_12_1 \
+   && ln -s libclntsh.so.12.1 libclntsh.so \
+   && ln -s libocci.so.12.1 libocci.so
+
 # Never prompts the user for choices on installation/configuration of packages
 ENV DEBIAN_FRONTEND noninteractive
 ENV TERM linux
 
+# Oracle
+ENV ORACLE_HOME /opt/oracle/instantclient_12_1
+ENV LD_LIBRARY_PATH $ORACLE_HOME:$LD_LIBRARY_PATH
+ENV PATH=$ORACLE_HOME:$PATH
+
 # Airflow
 ARG AIRFLOW_VERSION=1.7.1.3
 ENV AIRFLOW_HOME /usr/local/airflow
+
 
 # Define en_US.
 ENV LANGUAGE en_US.UTF-8
@@ -22,6 +42,10 @@ ENV LC_ALL en_US.UTF-8
 ENV LC_CTYPE en_US.UTF-8
 ENV LC_MESSAGES en_US.UTF-8
 ENV LC_ALL  en_US.UTF-8
+
+RUN echo "/opt/oracle/instantclient_12_1" > /etc/ld.so.conf.d/oracle.conf && ldconfig 
+
+RUN pip install requests && pip install retrying
 
 RUN set -ex \
     && buildDeps=' \
